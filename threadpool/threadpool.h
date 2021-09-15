@@ -33,8 +33,15 @@ private:
     connection_pool *m_connPool;  //数据库
     int m_actor_model;          //模型切换
 };
+
+
 template <typename T>
-threadpool<T>::threadpool( int actor_model, connection_pool *connPool, int thread_number, int max_requests) : m_actor_model(actor_model),m_thread_number(thread_number), m_max_requests(max_requests), m_threads(NULL),m_connPool(connPool)
+threadpool<T>::threadpool( int actor_model, connection_pool *connPool, int thread_number, int max_requests) : 
+        m_actor_model(actor_model),
+        m_thread_number(thread_number),
+        m_max_requests(max_requests),
+        m_threads(NULL),
+        m_connPool(connPool)
 {
     if (thread_number <= 0 || max_requests <= 0)
         throw std::exception();
@@ -43,23 +50,27 @@ threadpool<T>::threadpool( int actor_model, connection_pool *connPool, int threa
         throw std::exception();
     for (int i = 0; i < thread_number; ++i)
     {
-        if (pthread_create(m_threads + i, NULL, worker, this) != 0)
+        if (pthread_create(m_threads + i, NULL, worker, this) != 0)//成功时返回0
         {
             delete[] m_threads;
             throw std::exception();
         }
-        if (pthread_detach(m_threads[i]))
+        if (pthread_detach(m_threads[i]))//让线程脱离主线程
         {
             delete[] m_threads;
             throw std::exception();
         }
     }
 }
+
+
 template <typename T>
 threadpool<T>::~threadpool()
 {
     delete[] m_threads;
 }
+
+//向线程池中添加任务
 template <typename T>
 bool threadpool<T>::append(T *request, int state)
 {
@@ -70,11 +81,13 @@ bool threadpool<T>::append(T *request, int state)
         return false;
     }
     request->m_state = state;
-    m_workqueue.push_back(request);
+    m_workqueue.push_back(request);//向请求队伍添加请求
     m_queuelocker.unlock();
     m_queuestat.post();
     return true;
 }
+
+
 template <typename T>
 bool threadpool<T>::append_p(T *request)
 {
@@ -89,6 +102,8 @@ bool threadpool<T>::append_p(T *request)
     m_queuestat.post();
     return true;
 }
+
+//工作线程执行的函数，从工作队伍中不断取出任务进行执行
 template <typename T>
 void *threadpool<T>::worker(void *arg)
 {
@@ -96,25 +111,30 @@ void *threadpool<T>::worker(void *arg)
     pool->run();
     return pool;
 }
+
+
 template <typename T>
 void threadpool<T>::run()
 {
     while (true)
     {
-        m_queuestat.wait();
+        m_queuestat.wait();//P操作，等待任务
         m_queuelocker.lock();
         if (m_workqueue.empty())
         {
             m_queuelocker.unlock();
             continue;
         }
+        //取出任务request
         T *request = m_workqueue.front();
         m_workqueue.pop_front();
         m_queuelocker.unlock();
+
         if (!request)
             continue;
         if (1 == m_actor_model)
         {
+            //根据request的状态决定执行的任务，0为读任务
             if (0 == request->m_state)
             {
                 if (request->read_once())
@@ -129,6 +149,7 @@ void threadpool<T>::run()
                     request->timer_flag = 1;
                 }
             }
+            // 1 为写任务
             else
             {
                 if (request->write())
