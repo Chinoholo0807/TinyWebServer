@@ -23,46 +23,49 @@
 
 #include <time.h>
 #include "../log/log.h"
-
+//前向声明
 class util_timer;
-
+//用户数据结构
 struct client_data
 {
-    sockaddr_in address;
-    int sockfd;
-    util_timer *timer;
+    sockaddr_in address;//客户端address
+    int sockfd;//socket文件描述符
+    util_timer *timer;//定时器
 };
-
+//定时器类
 class util_timer
 {
 public:
     util_timer() : prev(NULL), next(NULL) {}
 
 public:
-    time_t expire;
+    time_t expire;//超时时间
     
-    void (* cb_func)(client_data *);
-    client_data *user_data;
-    util_timer *prev;
-    util_timer *next;
+    void (* cb_func)(client_data *);//回调函数
+    client_data *user_data;//用户数据
+    util_timer *prev;//指向前一个定时器
+    util_timer *next;//指向后一个定时器
 };
-
+//定时器链表 升序双向链表
 class sort_timer_lst
 {
 public:
     sort_timer_lst();
     ~sort_timer_lst();
-
+    //将timer添加到链表中 O(n)
     void add_timer(util_timer *timer);
+    //当某个定时任务发生变化时调用，调整到合适的位置 O(n)
     void adjust_timer(util_timer *timer);
+    //删除指定定时器 O(1)
     void del_timer(util_timer *timer);
+    //💓函数，每个一段时间执行一次，SIGALRM信号每次被触发就在其信号处理函数中执行一次tick，处理链表上到期的任务 O(k)
     void tick();
 
 private:
     void add_timer(util_timer *timer, util_timer *lst_head);
 
-    util_timer *head;
-    util_timer *tail;
+    util_timer *head;//头节点
+    util_timer *tail;//尾节点
 };
 
 class Utils
@@ -87,7 +90,7 @@ public:
 
     //定时处理任务，重新定时以不断触发SIGALRM信号
     void timer_handler();
-
+    
     void show_error(int connfd, const char *info);
 
 public:
