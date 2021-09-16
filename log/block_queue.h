@@ -12,7 +12,7 @@
 #include <sys/time.h>
 #include "../lock/locker.h"
 using namespace std;
-
+//阻塞队伍
 template <class T>
 class block_queue
 {
@@ -23,7 +23,7 @@ public:
         {
             exit(-1);
         }
-
+        //构造函数创建循环数组
         m_max_size = max_size;
         m_array = new T[max_size];
         m_size = 0;
@@ -75,7 +75,7 @@ public:
     }
     //返回队首元素
     bool front(T &value) 
-    {
+    {0
         m_mutex.lock();
         if (0 == m_size)
         {
@@ -140,7 +140,7 @@ public:
         m_array[m_back] = item;
 
         m_size++;
-
+        //广播
         m_cond.broadcast();
         m_mutex.unlock();
         return true;
